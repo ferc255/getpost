@@ -4,10 +4,11 @@ from __future__ import unicode_literals
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from bs4 import BeautifulSoup
+from sites.models import SiteRequest
 import json
 import urllib
 import urllib.request
-from bs4 import BeautifulSoup
 
 
 def scrape_site(url):
@@ -26,45 +27,66 @@ def scrape_site(url):
 
     result['status'] = response.getcode()
     html = response.read()
-
-    links = set()
     soup = BeautifulSoup(html, 'html.parser')
+
+    sitehost = urllib.parse.urlparse(url).hostname
     for link in soup.findAll('a'):
         href = link.get('href')
-        if href and href != '#':
-            links.add(href)
-
-    for link in links:
-        if link[0] == '/':
-            result['internal'].append(link)
-        else:
-            result['external'].append(link)
-
-    return result
-
-
-def b_pr(d):
-    for key in d:
-        print(key, ':', d[key])
+        host = urllib.parse.urlparse(href).hostname
+        path = urllib.parse.urlparse(href).path
         
+        if href and href != '#':
+            if len(href) >= 4 and href[:4] == 'http' and host == sitehost:
+                href = path
+                
+            if len(href) < 4 or href[:4] != 'http':
+                result['internal'].append(href)
+            else:
+                result['external'].append(href)
+
+    result['internal'] = list(set(result['internal']))
+    result['external'] = list(set(result['external']))
+    
+    return result
 
 
 @csrf_exempt
 def main_view(request, id):
-    answer = {}
     if request.method == 'GET':
         if id:
-            answer = {'type': 'GET', 'id': 'available',}
+            try:
+                cur_item = SiteRequest.objects.get(id=id)
+            except SiteRequest.DoesNotExist: 
+                answer = {}
+            else:
+                answer = {
+                    'url': cur_item.url,
+                    'id': id,
+                    'status': cur_item.status,
+                    'internal_links': json.loads(cur_item.internal),
+                    'external_links': json.loads(cur_item.external)
+                }
         else:
-            answer = {'type': 'GET', 'id': 'absent'}
+            answer = {'sites': []}
+            for site in SiteRequest.objects.all():
+                item = {
+                    'url': site.url,
+                    'id': site.id,
+                    'status': site.status
+                }
+                answer['sites'].append(item)
     elif request.method == 'POST':
         target_url = json.loads(request.body.decode())['url']
         attrs = scrape_site(target_url)
-        #b_pr(attrs)
-        temp = json.dumps(attrs)
-        tt = json.loads(temp)
-        print(len(temp))
-        answer = attrs
         
+        new_req = SiteRequest.objects.create(
+            url=target_url,
+            status=attrs['status'],
+            internal=json.dumps(attrs['internal']),
+            external=json.dumps(attrs['external'])
+        )
+        new_req.save()
+
+        answer = {'id': new_req.id}
         
     return JsonResponse(answer)
