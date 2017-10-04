@@ -3,4 +3,8 @@ from __future__ import unicode_literals
 
 from django.db import models
 
-# Create your models here.
+class SiteRequest(models.Model):
+    url = models.TextField()
+    status = models.IntegerField()
+    internal = models.TextField()
+    external = models.TextField()
