@@ -5,7 +5,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from bs4 import BeautifulSoup
-from sites.models import SiteRequest
+from getpost.sites.models import SiteRequest
 import json
 import urllib
 import urllib.request
