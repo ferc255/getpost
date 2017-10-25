@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.shortcuts import render
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from bs4 import BeautifulSoup
-from getpost.sites.models import SiteRequest
 import json
 import urllib
 import urllib.request
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from bs4 import BeautifulSoup
+from getpost.sites.models import SiteRequest
+
 
 def scrape_site(url):
     result = {'internal': [], 'external': []}
-    
+
     user_agent = 'Mozilla/5.0 (Windows)'
     request = urllib.request.Request(url, headers={'User-Agent': user_agent})
     try:
@@ -34,11 +34,11 @@ def scrape_site(url):
         href = link.get('href')
         host = urllib.parse.urlparse(href).hostname
         path = urllib.parse.urlparse(href).path
-        
+
         if href and href != '#':
             if len(href) >= 4 and href[:4] == 'http' and host == sitehost:
                 href = path
-                
+
             if len(href) < 4 or href[:4] != 'http':
                 result['internal'].append(href)
             else:
@@ -59,7 +59,7 @@ def main_view(request, id):
             except SiteRequest.DoesNotExist: 
                 answer = {}
             else:
-                answer = {
+                answer = {                         
                     'url': cur_item.url,
                     'id': id,
                     'status': cur_item.status,
